@@ -1,11 +1,8 @@
 // --- Core Accounting Engine & Supabase Integrated Store --- //
+document.body.innerHTML += "<h1 style='position:absolute;z-index:9999;color:red'>APP.JS PARSED AND EXECUTED</h1>";
 
-let isCloud = window.SUPABASE_URL && window.SUPABASE_URL !== 'YOUR_SUPABASE_URL';
-let supabase = null;
-
-if (isCloud) {
-    supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-}
+let isCloud = false;
+let supabaseClient = null;
 
 // Data Store
 let accounts = { assets: [], incomes: [], expenses: [], equity: [] };
@@ -37,17 +34,14 @@ async function loadData() {
     }
 
     try {
-        // Load Accounts
-        const { data: dbAccs, error: e1 } = await supabase.from('accounts').select('*');
+        const { data: dbAccs, error: e1 } = await supabaseClient.from('accounts').select('*');
         if (e1) throw e1;
         accounts = { assets: [], incomes: [], expenses: [], equity: [] };
         dbAccs.forEach(a => { if (accounts[a.category]) accounts[a.category].push(a); });
 
-        // Load Journals
-        const { data: dbJours, error: e2 } = await supabase.from('journals').select('*').order('date', { ascending: true });
+        const { data: dbJours, error: e2 } = await supabaseClient.from('journals').select('*').order('date', { ascending: true });
         if (e2) throw e2;
         journals = dbJours.map(tx => {
-            // Recompute lines artificially for ledger calculation
             let lines = [];
             if (tx.type === 'expense') { lines.push({ acc: tx.to_id, amount: tx.amount }); lines.push({ acc: tx.from_id, amount: -tx.amount }); }
             else if (tx.type === 'income') { lines.push({ acc: tx.to_id, amount: tx.amount }); lines.push({ acc: tx.from_id, amount: -tx.amount }); }
@@ -56,8 +50,9 @@ async function loadData() {
             return { id: tx.id, date: tx.date, type: tx.type, fromId: tx.from_id, toId: tx.to_id, amount: tx.amount, memo: tx.memo, lines };
         });
     } catch (err) {
-        alert("云数据加载失败: " + err.message);
-        seedLocalData(); // fallback
+        alert("云数据加载失败，已降级离线模式: " + err.message);
+        isCloud = false;
+        seedLocalData();
     }
 }
 
@@ -70,11 +65,10 @@ async function recordTransaction(date, type, fromId, toId, amount, memo) {
     const txObj = { id: newId, date, type, from_id: fromId, to_id: toId, amount, memo };
 
     if (isCloud) {
-        const { error } = await supabase.from('journals').insert([txObj]);
+        const { error } = await supabaseClient.from('journals').insert([txObj]);
         if (error) throw new Error("云端保存失败: " + error.message);
     }
 
-    // Update local memory representations smoothly
     let lines = [];
     lines.push({ acc: toId, amount: amount });
     lines.push({ acc: fromId, amount: -amount });
@@ -84,7 +78,7 @@ async function recordTransaction(date, type, fromId, toId, amount, memo) {
 async function addAccount(category, name) {
     const id = (category.charAt(0)) + Math.floor(Math.random() * 10000);
     if (isCloud) {
-        const { error } = await supabase.from('accounts').insert([{ id, name, category }]);
+        const { error } = await supabaseClient.from('accounts').insert([{ id, name, category }]);
         if (error) throw new Error("建账失败: " + error.message);
     }
     accounts[category].push({ id, name, category });
@@ -96,7 +90,6 @@ const getAccountMap = () => {
     return map;
 };
 
-// Calculate all balances
 function getLedger() {
     const ledger = {};
     [...accounts.assets, ...accounts.incomes, ...accounts.expenses, ...accounts.equity].forEach(a => ledger[a.id] = 0);
@@ -109,15 +102,26 @@ function getLedger() {
 
 // --- UI Logic & Controllers --- //
 
-document.addEventListener('DOMContentLoaded', async () => {
+function initApp() {
+    try {
+        isCloud = window.SUPABASE_URL && window.SUPABASE_URL !== 'YOUR_SUPABASE_URL';
+        if (isCloud) {
+            if (typeof window.supabase !== 'undefined') {
+                supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+            } else {
+                alert("未能加载 Supabase 资源，请刷新重试！");
+                isCloud = false;
+            }
+        }
+    } catch (err) {
+        console.error("Supabase 初始化严重错误: ", err);
+        alert("云端连接密钥格式有误或配置失败，已切回本地模式。错误原因: " + err.message);
+        isCloud = false;
+    }
+
     document.getElementById('today-date').innerText = new Date().toLocaleDateString('zh-CN');
     
-    // Load Data
-    document.getElementById('view-title').innerText = "加载中 (Loading Cloud)...";
-    await loadData();
-    document.getElementById('view-title').innerText = "仪表盘概览";
-    
-    // Nav Switcher
+    // 立即绑定所有可交互事件，避免因网络挂起导致无响应
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const target = e.currentTarget.dataset.view;
@@ -193,14 +197,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             await recordTransaction(date, type, from, to, amount, memo);
             btn.innerText = '✓ 记账成功!';
             btn.style.background = 'var(--success)';
-            setTimeout(() => { btn.innerText = originText; btn.style.background = ''; btn.disabled=false; setupFormForType(type); }, 1000);
+            setTimeout(() => { btn.innerText = originText; btn.style.background = ''; btn.disabled=false; setupFormForType(type); renderDashboard(); }, 1000);
         } catch (err) {
             alert(err.message);
             btn.innerText = originText; btn.disabled=false;
         }
     });
 
-    // Report render triggers
     document.querySelectorAll('.rpt-tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
             document.querySelectorAll('.rpt-tab').forEach(t => t.classList.remove('active'));
@@ -210,13 +213,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    setupFormForType('expense');
-    renderDashboard();
     bindSettingEvents();
     bindExportEvents();
-});
 
-// Render logic
+    // 独立进行网络请求，不阻塞事件监听生效
+    (async () => {
+        document.getElementById('view-title').innerText = "加载云端数据中...";
+        await loadData();
+        document.getElementById('view-title').innerText = "仪表盘概览";
+        setupFormForType('expense');
+        renderDashboard();
+    })();
+}
+
+initApp();
+
 function renderDashboard() {
     const ledger = getLedger();
     let netWorth = 0, totalIncome = 0, totalExpense = 0;
@@ -274,7 +285,6 @@ function renderReports() {
     document.getElementById('is-net-income').innerText = formatMoney(netIncome);
 }
 
-// Settings & Exports
 function renderSettings() {
     const renderList = (domId, arr) => {
         document.getElementById(domId).innerHTML = arr.map(a => `<div class="r-row" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-bottom:5px;"><span>${a.name}</span></div>`).join('');

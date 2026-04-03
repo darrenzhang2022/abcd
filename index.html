@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EasyBook | 极简记账</title>
+    <script>
+    window.onerror = function(msg, url, line, col, error) {
+        document.body.innerHTML += "<div style='color:red; background:white; position:fixed; top:0; left:0; width:100%; z-index:99999; padding:20px'><h2>JS Crash</h2><p>" + msg + "</p><p>" + line + ":" + col + "</p><p>" + (error ? error.stack : "") + "</p></div>";
+        return false;
+    };
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -258,7 +264,7 @@
     
     <!-- Supabase SDK & Config -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script src="config.js?v=2"></script>
+    <script src="app.js?v=2"></script>
 </body>
 </html>
