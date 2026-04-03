@@ -1,5 +1,4 @@
 // --- Core Accounting Engine & Supabase Integrated Store --- //
-document.body.innerHTML += "<h1 style='position:absolute;z-index:9999;color:red'>APP.JS PARSED AND EXECUTED</h1>";
 
 let isCloud = false;
 let supabaseClient = null;
@@ -102,26 +101,60 @@ function getLedger() {
 
 // --- UI Logic & Controllers --- //
 
-function initApp() {
-    try {
-        isCloud = window.SUPABASE_URL && window.SUPABASE_URL !== 'YOUR_SUPABASE_URL';
-        if (isCloud) {
-            if (typeof window.supabase !== 'undefined') {
-                supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-            } else {
-                alert("未能加载 Supabase 资源，请刷新重试！");
-                isCloud = false;
-            }
+function initAuth() {
+    isCloud = window.SUPABASE_URL && window.SUPABASE_URL !== 'YOUR_SUPABASE_URL';
+    if (isCloud) {
+        if (typeof window.supabase !== 'undefined') {
+            supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        } else {
+            console.warn("未能加载 Supabase，降级");
+            isCloud = false;
         }
-    } catch (err) {
-        console.error("Supabase 初始化严重错误: ", err);
-        alert("云端连接密钥格式有误或配置失败，已切回本地模式。错误原因: " + err.message);
-        isCloud = false;
     }
 
+    const overlay = document.getElementById('login-overlay');
+    const layout = document.getElementById('main-layout');
+    const correctPin = window.ACCESS_PIN || '888888';
+
+    // 检查是否已经输入过正确密码
+    if (localStorage.getItem('easybook_pin') === correctPin) {
+        overlay.classList.add('hidden');
+        layout.style.opacity = '1';
+        startApp();
+    } else {
+        // 解除主页面隐藏（但盖上overlay）让体验更好
+        layout.style.opacity = '1';
+    }
+
+    // 监听密码表单
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pin = document.getElementById('login-pin').value;
+        const errObj = document.getElementById('login-error');
+        
+        if (pin === correctPin) {
+            localStorage.setItem('easybook_pin', correctPin);
+            overlay.classList.add('hidden');
+            startApp();
+        } else {
+            errObj.innerText = '密码不正确 (Incorrect Password)';
+        }
+    });
+
+    // 退出锁定
+    const btnLogout = document.getElementById('btn-logout');
+    if(btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            localStorage.removeItem('easybook_pin');
+            window.location.reload();
+        });
+    }
+}
+
+function startApp() {
     document.getElementById('today-date').innerText = new Date().toLocaleDateString('zh-CN');
     
-    // 立即绑定所有可交互事件，避免因网络挂起导致无响应
+    // 绑定所有的侧边栏切换事件
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const target = e.currentTarget.dataset.view;
@@ -216,7 +249,6 @@ function initApp() {
     bindSettingEvents();
     bindExportEvents();
 
-    // 独立进行网络请求，不阻塞事件监听生效
     (async () => {
         document.getElementById('view-title').innerText = "加载云端数据中...";
         await loadData();
@@ -226,7 +258,9 @@ function initApp() {
     })();
 }
 
-initApp();
+// 启动认证和程序的入口
+initAuth();
+
 
 function renderDashboard() {
     const ledger = getLedger();
