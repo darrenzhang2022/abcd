@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyBook | 极简记账</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand-area">
+                <div class="logo-box">EB</div>
+                <h1 class="brand-name">EasyBook</h1>
+            </div>
+            
+            <nav class="nav-links">
+                <button class="nav-btn active" data-view="dashboard">
+                    <span class="icon">📊</span> 仪表盘概览
+                </button>
+                <button class="nav-btn" data-view="entry">
+                    <span class="icon">✍️</span> 快速记账
+                </button>
+                <button class="nav-btn" data-view="reports">
+                    <span class="icon">📑</span> 财务报表
+                </button>
+                <button class="nav-btn" data-view="settings">
+                    <span class="icon">⚙️</span> 科目管理与设置
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar">👨‍💻</div>
+                    <div class="user-text">
+                        <div class="name">个人账本</div>
+                        <div class="status">● 本地保险库</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-nav">
+                <h2 id="view-title">仪表盘概览</h2>
+                <div class="date-chip" id="today-date">YYYY-MM-DD</div>
+            </header>
+
+            <div class="view-container">
+                
+                <!-- 1. Dashboard View -->
+                <section id="view-dashboard" class="view-section active">
+                    <div class="stats-grid">
+                        <div class="stat-card glass primary-glow">
+                            <div class="stat-label">净资产 (Net Worth)</div>
+                            <div class="stat-value" id="dash-net-worth">¥ 0.00</div>
+                        </div>
+                        <div class="stat-card glass success-glow">
+                            <div class="stat-label">本期总收入</div>
+                            <div class="stat-value text-green" id="dash-income">¥ 0.00</div>
+                        </div>
+                        <div class="stat-card glass danger-glow">
+                            <div class="stat-label">本期总支出</div>
+                            <div class="stat-value text-red" id="dash-expense">¥ 0.00</div>
+                        </div>
+                    </div>
+
+                    <div class="panel glass mt-4">
+                        <div class="panel-header">
+                            <h3>最近账单 (Recent Transactions)</h3>
+                        </div>
+                        <div class="table-frame">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>日期</th>
+                                        <th>类型</th>
+                                        <th>账户</th>
+                                        <th>分类</th>
+                                        <th>摘要</th>
+                                        <th class="text-right">金额</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-tx-table">
+                                    <!-- JS populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. Easy Entry View -->
+                <section id="view-entry" class="view-section hidden">
+                    <div class="entry-panel glass">
+                        <div class="entry-tabs">
+                            <button class="tx-tab active" data-type="expense">支出 (Expense)</button>
+                            <button class="tx-tab" data-type="income">收入 (Income)</button>
+                            <button class="tx-tab" data-type="transfer">转账 (Transfer)</button>
+                        </div>
+                        
+                        <form id="entry-form" class="entry-form">
+                            <input type="hidden" id="entry-mode" value="expense">
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>日期 (Date)</label>
+                                    <input type="date" id="input-date" class="form-control" required>
+                                </div>
+                                <div class="form-group flex-2">
+                                    <label>金额 (Amount)</label>
+                                    <div class="amount-input-wrapper">
+                                        <span class="currency-symbol">¥</span>
+                                        <input type="number" step="0.01" id="input-amount" class="form-control amount-control" placeholder="0.00" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row" id="accounts-row">
+                                <div class="form-group" id="from-group">
+                                    <label id="label-from">支出账户 (Pay From)</label>
+                                    <select id="input-from" class="form-control" required>
+                                        <!-- JS populated -->
+                                    </select>
+                                </div>
+                                <div class="form-group" id="to-group">
+                                    <label id="label-to">支出类别 (Category)</label>
+                                    <select id="input-to" class="form-control" required>
+                                        <!-- JS populated -->
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>备注 (Memo)</label>
+                                <input type="text" id="input-memo" class="form-control" placeholder="补充说明这笔交易...">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-block">保存账单</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 3. Reports View -->
+                <section id="view-reports" class="view-section hidden">
+                    <div class="reports-nav glass">
+                        <button class="rpt-tab active" data-report="bs">资产负债表 (Balance Sheet)</button>
+                        <button class="rpt-tab" data-report="is">利润表 (Income Statement)</button>
+                    </div>
+                    
+                    <!-- Balance Sheet -->
+                    <div id="report-bs" class="report-content glass active">
+                        <div class="report-head" style="position: relative;">
+                            <h2>资产负债表</h2>
+                            <p>截止至今目前的财务状况</p>
+                            <button class="btn btn-secondary btn-export" data-export="bs" style="position: absolute; right: 0; top: 0; padding: 8px 16px; font-size: 0.9rem;">⬇️ 导出 CSV</button>
+                        </div>
+                        <div class="report-split">
+                            <div class="r-col">
+                                <h3>资产 (Assets)</h3>
+                                <div id="bs-assets" class="r-list"></div>
+                                <div class="r-subtotal"><span>总资产:</span><strong id="bs-total-asset">¥ 0.00</strong></div>
+                            </div>
+                            <div class="r-col">
+                                <h3>负债 (Liabilities)</h3>
+                                <div id="bs-liabs" class="r-list"></div>
+                                <div class="r-subtotal mb-2"><span>总负债:</span><strong id="bs-total-liab">¥ 0.00</strong></div>
+                                
+                                <h3>净资产/权益 (Equity)</h3>
+                                <div id="bs-equity" class="r-list"></div>
+                                <div class="r-subtotal"><span>总权益:</span><strong id="bs-total-equity">¥ 0.00</strong></div>
+                                
+                                <div class="r-grand-total mt-4 gradient-bg">
+                                    <span>负债及权益总计:</span><strong id="bs-total-le">¥ 0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Income Statement -->
+                    <div id="report-is" class="report-content glass hidden">
+                        <div class="report-head" style="position: relative;">
+                            <h2>利润表 (收入表)</h2>
+                            <p>历史以来的全部收支概况</p>
+                            <button class="btn btn-secondary btn-export" data-export="is" style="position: absolute; right: 0; top: 0; padding: 8px 16px; font-size: 0.9rem;">⬇️ 导出 CSV</button>
+                        </div>
+                        <div class="report-single mx-auto">
+                            <h3>营业收入 (Revenue)</h3>
+                            <div id="is-revenue" class="r-list"></div>
+                            <div class="r-subtotal text-green"><span>总收入:</span><strong id="is-total-rev">¥ 0.00</strong></div>
+
+                            <h3 class="mt-4">营业支出 (Expenses)</h3>
+                            <div id="is-expense" class="r-list"></div>
+                            <div class="r-subtotal text-red"><span>总支出:</span><strong id="is-total-exp">¥ 0.00</strong></div>
+
+                            <div class="r-grand-total mt-4 gradient-bg">
+                                <span>净利润 (Net Income):</span><strong id="is-net-income">¥ 0.00</strong>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 4. Settings View -->
+                <section id="view-settings" class="view-section hidden">
+                    <div class="panel glass">
+                        <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3>财务科目管理 (Chart of Accounts)</h3>
+                        </div>
+                        <div class="settings-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 1rem;">
+                            <!-- Assets -->
+                            <div class="acc-col">
+                                <h4 style="color:var(--accent); margin-bottom: 1rem;">资金账户 (Assets)</h4>
+                                <div id="set-assets-list" class="r-list"></div>
+                                <div style="margin-top:1rem; display:flex; gap:10px;">
+                                    <input type="text" id="new-asset-name" class="form-control" placeholder="账户名称 (如: 招商银行)" style="padding: 8px;">
+                                    <button class="btn btn-primary btn-add-acc" data-cat="assets" style="padding:8px 12px; font-size:0.9rem;">添加</button>
+                                </div>
+                            </div>
+                            <!-- Incomes -->
+                            <div class="acc-col">
+                                <h4 style="color:var(--success); margin-bottom: 1rem;">收入类别 (Incomes)</h4>
+                                <div id="set-incomes-list" class="r-list"></div>
+                                <div style="margin-top:1rem; display:flex; gap:10px;">
+                                    <input type="text" id="new-income-name" class="form-control" placeholder="类别名称 (如: 兼职收入)" style="padding: 8px;">
+                                    <button class="btn btn-primary btn-add-acc" data-cat="incomes" style="padding:8px 12px; font-size:0.9rem;">添加</button>
+                                </div>
+                            </div>
+                            <!-- Expenses -->
+                            <div class="acc-col">
+                                <h4 style="color:var(--danger); margin-bottom: 1rem;">支出类别 (Expenses)</h4>
+                                <div id="set-expenses-list" class="r-list"></div>
+                                <div style="margin-top:1rem; display:flex; gap:10px;">
+                                    <input type="text" id="new-expense-name" class="form-control" placeholder="类别名称 (如: 医疗健康)" style="padding: 8px;">
+                                    <button class="btn btn-primary btn-add-acc" data-cat="expenses" style="padding:8px 12px; font-size:0.9rem;">添加</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-header" style="margin-top: 3rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-light);">
+                            <h3>原始数据导出 (Raw Data Export)</h3>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <p style="color: var(--text-muted); margin-bottom: 1rem;">将所有底层记账凭证历史记录下载为 CSV 文件，您可以在 Excel 中自由分析。</p>
+                            <button class="btn btn-primary btn-export" data-export="journals" style="padding: 10px 20px;">⬇️ 下载全部记账历史 (CSV)</button>
+                        </div>
+                    </div>
+                </section>
+                
+            </div>
+        </main>
+    </div>
+    
+    <!-- Supabase SDK & Config -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
